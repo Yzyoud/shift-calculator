@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حاسبة جدول المناوبات</title>
+    <style>
+        /* (التنسيقات كما هي) */
+        body { font-family: 'Arial', sans-serif; background-color: #f4f4f9; color: #333; padding: 20px; text-align: right; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        h2 { color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; text-align: center; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="date"], select { width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: #218838; }
+        #result { margin-top: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #e9ecef; font-size: 18px; font-weight: bold; text-align: center; }
+        .note { margin-top: 20px; padding: 10px; background-color: #d1ecf1; border-radius: 5px; color: #0c5460; border: 1px solid #bee5eb; font-weight: bold; }
+        footer { margin-top: 30px; text-align: center; font-size: 12px; color: #888; padding: 10px 0; border-top: 1px solid #ccc; }
+        footer span { font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body onload="setDefaultDate()"> 
+
+<div class="container">
+    <h2>حاسبة مناوبات العمل</h2>
+
+    <div class="note">
+        **ملاحظة:** يرجى إدخال التاريخ من خلال حقل التقويم. يفضل استخدام الأرقام اللاتينية (1, 2, 3...) لضمان دقة الحساب في المتصفحات المختلفة.
+    </div>
+    
+    <label for="inputDate">التاريخ المطلوب (سنة-شهر-يوم):</label>
+    <input type="date" id="inputDate">
+
+    <label for="inputGroup">رقم مجموعتك:</label>
+    <select id="inputGroup">
+        <option value="1">المجموعة 1</option>
+        <option value="2">المجموعة 2</option>
+        <option value="3">المجموعة 3</option>
+        <option value="4" selected>المجموعة 4</option>
+    </select>
+
+    <button onclick="calculateShift()">احسب المناوبة</button>
+
+    <div id="result">
+        النتيجة ستظهر هنا...
+    </div>
+</div>
+
+<footer>
+    تصميم وتطوير: <span>YOUSEF AL-ZYOUD</span>
+</footer>
+
+<script>
+    // **********************************************
+    //  إعدادات أساسية لحساب الدورة 
+    // **********************************************
+    
+    const START_DATE_STRING = '2025-11-04'; 
+    
+    const SHIFTS = [
+        'أول يوم صباحي', 'ثاني يوم صباحي', 'ثالث يوم صباحي',
+        'أول يوم مسائي', 'ثاني يوم مسائي', 'ثالث يوم مسائي',
+        'أول يوم ليلي', 'ثاني يوم ليلي', 'ثالث يوم ليلي',
+        'أول يوم عطلة', 'ثاني يوم عطلة', 'ثالث يوم عطلة'
+    ];
+    
+    const CYCLE_LENGTH = 12;
+    const GROUP_OFFSET = 3; 
+
+    // **********************************************
+    // دالة لتحويل الأرقام العربية إلى لاتينية (1, 2, 3)
+    // **********************************************
+    function convertArabicNumerals(str) {
+        // مصفوفة الأرقام العربية
+        const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        // مصفوفة الأرقام اللاتينية المقابلة
+        const latin = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        // نستبدل كل رقم عربي بما يقابله اللاتيني
+        for (let i = 0; i < arabic.length; i++) {
+            // استخدام التعبير النمطي (Regular Expression) لضمان الاستبدال العالمي
+            const regex = new RegExp(arabic[i], 'g');
+            str = str.replace(regex, latin[i]);
+        }
+        return str;
+    }
+
+
+    function createLocalDate(dateString) {
+        // **التحويل يطبق هنا قبل تقسيم التاريخ**
+        dateString = convertArabicNumerals(dateString); 
+        
+        const parts = dateString.split('-');
+        // التأكد من أن الأجزاء الثلاثة موجودة
+        if (parts.length !== 3) {
+            console.error("Invalid date format after conversion.");
+            return null;
+        }
+
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
+        date.setHours(0, 0, 0, 0); 
+        return date;
+    }
+
+    function setDefaultDate() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        let mm = today.getMonth() + 1; 
+        let dd = today.getDate();
+
+        if (dd < 10) dd = '0' + dd;
+        if (mm < 10) mm = '0' + mm;
+
+        const formattedDate = yyyy + '-' + mm + '-' + dd;
+        document.getElementById('inputDate').value = formattedDate;
+        
+        calculateShift();
+    }
+    
+    function calculateShift() {
+        let inputDateStr = document.getElementById('inputDate').value;
+        const group = parseInt(document.getElementById('inputGroup').value);
+        const resultDiv = document.getElementById('result');
+
+        if (!inputDateStr) {
+            resultDiv.innerHTML = 'الرجاء إدخال التاريخ المطلوب.';
+            return;
+        }
+        
+        // **إرسال التاريخ المُدخل إلى دالة التحويل قبل الحساب**
+        const startDateObj = createLocalDate(START_DATE_STRING);
+        const inputDateObj = createLocalDate(inputDateStr);
+        
+        if (!inputDateObj) {
+            resultDiv.innerHTML = 'خطأ في قراءة صيغة التاريخ. يرجى إعادة المحاولة.';
+            return;
+        }
+
+        const diffTime = inputDateObj.getTime() - startDateObj.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+
+        const groupShiftOffset = (group - 1) * GROUP_OFFSET; 
+        
+        let cycleDayIndex = (diffDays - groupShiftOffset) % CYCLE_LENGTH;
+        
+        if (cycleDayIndex < 0) {
+            cycleDayIndex += CYCLE_LENGTH; 
+        }
+
+        const shift = SHIFTS[cycleDayIndex];
+
+        resultDiv.innerHTML = `
+            في تاريخ <span style="color: #007bff;">${inputDateStr}</span>، مناوبة **المجموعة ${group}** هي:
+            <br>
+            <span style="color: #dc3545; font-size: 24px;">${shift}</span>
+        `;
+    }
+</script>
+
+</body>
+</html>
